@@ -13,10 +13,16 @@ covid = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_c
 df = pd.read_csv(covid)
 melt_df = df.melt(id_vars=['Country/Region','Province/State','Lat','Long'])
 melt_df.rename(columns={'variable':'Date','value':'Total_cases'},inplace=True)
+
+#death ='https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+#recover ='https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+
+
+
 country_list = list(melt_df['Country/Region'].unique())
 state_list = list(melt_df['Province/State'].unique())
 
-page_value  = st.sidebar.radio('Select Page', ['Basic Info','Last 5 Days','New Cases','Total Cases'])
+page_value  = st.sidebar.radio('Select Page', ['Basic Info','Last 5 Days','New Cases','Total Cases','Recoveries','Deaths'])
 
 
 st.title('COVID-19')
@@ -69,9 +75,10 @@ if page_value=='Total Cases':
     fig=px.line(rec_df,x='Date',y='New_Cases')
     st.header('Total Cases')
     st.plotly_chart(fig)
+
+
     
-    
-    
+
     
 
 
