@@ -1,33 +1,31 @@
+#Importing Libraries
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-temp_val = 0
-def dailyCaseClac(x):
-    global temp_val
-    currentVal = x - temp_val
-    temp_val = x
-    return int(currentVal)
+#Importing Datasets 
+cases='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+deaths='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+cases_df=pd.read_csv(cases)
+deaths_df=pd.read_csv(deaths)
 
-covid = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
-df = pd.read_csv(covid)
-melt_df = df.melt(id_vars=['Country/Region','Province/State','Lat','Long'])
-melt_df.rename(columns={'variable':'Date','value':'Total_cases'},inplace=True)
+#Un-pivoting the datasets
+melt_cases_df = cases_df.melt(id_vars=['Country/Region','Province/State','Lat','Long'],var_name='Date',value_name='Cases')
+melt_deaths_df=deaths_df.melt(id_vars=['Province/State','Country/Region','Lat','Long'],var_name='Date',value_name='Deaths')
+melt_cases_df['Date'] = pd.to_datetime(melt_cases_df['Date'])
+melt_deaths_df['Date'] = pd.to_datetime(melt_deaths_df['Date'])
 
-#death ='https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
-#recover ='https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+# Creating Sidebar
+page=st.sidebar.radio('Select Page',['Info','Cases','Deaths'])
+last_date=melt_cases_df['Date'].max()
+selected_country  = st.sidebar.selectbox('Select Country', list(list(melt_cases_df['Country/Region'].unique())))
+st.sidebar.write('Last Updated date:',last_date )
 
+#Page Title
+st.title('COVID-19 Dashboard')
 
-
-country_list = list(melt_df['Country/Region'].unique())
-state_list = list(melt_df['Province/State'].unique())
-
-page_value  = st.sidebar.radio('Select Page', ['Basic Info','Last 5 Days','New Cases','Total Cases','Recoveries','Deaths'])
-
-
-st.title('COVID-19')
-
-if page_value == 'Basic Info':
+#Info Page
+if page == 'Info':
 
     st.header('COVID-19 (Coronavirus disease)')
     st.write(''' **Coronavirus disease (COVID-19)** is an infectious disease caused by the **SARS-CoV-2 virus**.
@@ -39,51 +37,39 @@ special treatment.However,some will become seriously ill and require medical att
     ''' The virus can spread from an infected person’s mouth or nose in small liquid particles when they cough, sneeze, speak, sing or breathe.
     These particles range from larger respiratory droplets to smaller aerosols.
     You can be infected by breathing in the virus if you are near someone who has COVID-19, or by touching a contaminated surface and then your eyes, nose or mouth.
-    The virus spreads more easily indoors and in crowded settings.'''
-)
+    The virus spreads more easily indoors and in crowded settings.''')
     st.markdown('**Most common symptoms:** Fever,Cough,Tiredness,Loss of Taste or Smell')
 
-if page_value=='Last 5 Days':
-    selectedcountry  = st.sidebar.selectbox('Select Country', country_list)
-    selectedstate  = st.sidebar.selectbox('Select State', state_list)
-    st.header('Country wise Last 5 days')
-    a=df.iloc[:,:2]
-    b=df.iloc[:,-5:]
-    c=pd.concat([a,b],1)
-    d=c[(c['Country/Region']==selectedcountry) | (c['Province/State']==selectedstate)]
+#Cases Page
 
-    st.table(d)
-
-if page_value == 'New Cases':
-    
-    selectedcountry  = st.sidebar.selectbox('Select Country', country_list)
-    t=st.sidebar.number_input('Pick Last Days',7,900,step=7)
-    rec_df=melt_df[melt_df['Country/Region'] == selectedcountry].tail(t)
-    rec_df['New_Cases'] = melt_df[melt_df['Country/Region'] == selectedcountry]['Total_cases'].apply(lambda x: int(dailyCaseClac(x)))
-    rec_df.drop(['Lat','Long'],1,inplace=True)
-    st.header('New Cases')
-    fig=px.line(rec_df,x='Date',y='New_Cases')
-    st.dataframe(rec_df)
-    st.plotly_chart(fig)
-
-if page_value=='Total Cases':
-    selectedcountry  = st.sidebar.selectbox('Select Country', country_list)
-    rec_df=melt_df[melt_df['Country/Region'] == selectedcountry]
-    rec_df['New_Cases'] = melt_df[melt_df['Country/Region'] == selectedcountry]['Total_cases'].apply(lambda x: int(dailyCaseClac(x)))
-    rec_df.drop(['Lat','Long'],1,inplace=True)
+if page=='Cases':
     st.header('Total Cases')
-    fig=px.line(rec_df,x='Date',y='New_Cases')
-    st.header('Total Cases')
-    st.plotly_chart(fig)
+    st.markdown(int(melt_cases_df[melt_cases_df['Country/Region']==selected_country]['Cases'].max()))
 
+    #New DataFrame with New cases
+    new_cases_df=melt_cases_df[melt_cases_df['Country/Region']==selected_country]
+    new_cases_df['New Cases']=new_cases_df['Cases'].diff()
+    st.write('New Cases on:',last_date)
+    st.markdown(int(new_cases_df['New Cases'].tail(1)))
 
-    
+    #Ploting line plot based on new cases
+    cases_fig= px.line(new_cases_df,x ='Date',y = 'New Cases')
+    cases_fig.update_layout(xaxis=dict(showgrid=False),yaxis=dict(showgrid=False))
+    st.plotly_chart(cases_fig)
 
-    
+#Deaths Page
 
+if page=='Deaths':
+    st.header('Total Deaths')
+    st.markdown(int( melt_deaths_df[melt_deaths_df['Country/Region']==selected_country]['Deaths'].max()))
 
-    
-    
-    
+    #New DataFrame with New deaths
+    new_deaths_df=melt_deaths_df[melt_deaths_df['Country/Region']==selected_country]
+    new_deaths_df['New Deaths']=new_deaths_df['Deaths'].diff()
+    st.write('New Deaths on:',last_date)
+    st.markdown(int(new_deaths_df['New Deaths'].tail(1)))
 
-
+    #Ploting line plot based on new cases
+    deaths_fig= px.line(new_deaths_df,x ='Date',y = 'New Deaths')
+    deaths_fig.update_layout(xaxis=dict(showgrid=False),yaxis=dict(showgrid=False))
+    st.plotly_chart(deaths_fig)
